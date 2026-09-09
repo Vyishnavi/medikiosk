@@ -15,3 +15,27 @@ body,
 *::-webkit-scrollbar {
   display: none;
 }
+
+
+/* Classy public-sector visual language */
+:root {
+  --govt-navy: #12355B;
+  --govt-green: #006B3F;
+  --govt-saffron: #E28B24;
+  --govt-border: #d9e1e8;
+}
+
+body {
+  background: #f4f7f9;
+  color: var(--govt-navy);
+}
+
+.govt-tricolor {
+  height: 4px;
+  background: linear-gradient(90deg, var(--govt-saffron) 0 33.33%, #ffffff 33.33% 66.66%, var(--govt-green) 66.66% 100%);
+  border-bottom: 1px solid rgba(18, 53, 91, 0.08);
+}
+
+button {
+  font-family: 'Inter', sans-serif;
+}
