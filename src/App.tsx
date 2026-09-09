@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 
-const N = '#0B1F3A'
-const T = '#0D9488'
-const G = '#16A34A'
+const N = '#12355B'
+const T = '#006B3F'
+const G = '#138A4B'
 const R = '#DC2626'
 const A = '#D97706'
 
@@ -20,6 +20,23 @@ const QUESTIONS = [
   { q: 'Any known allergies to medicines?', opts: ['Yes', 'No', 'Not sure'] },
   { q: 'Has anyone in your family had heart disease?', opts: ['Yes, father', 'Yes, other', 'No', 'Not sure'] },
 ]
+
+const TELUGU_QUESTIONS = [
+  { q: 'నమస్కారం రవి. ఈ రోజు మీరు ఆసుపత్రికి ఎందుకు వచ్చారు?', opts: ['ఛాతిలో నొప్పి', 'శ్వాస తీసుకోవడంలో ఇబ్బంది', 'జ్వరం', 'ఇతర కారణం'] },
+  { q: 'ఛాతిలో నొప్పి ఎప్పుడు మొదలైంది?', opts: ['ఈ రోజు', 'నిన్న', '2–3 రోజుల క్రితం', 'వారం కంటే ఎక్కువైంది'] },
+  { q: 'నొప్పి ఖచ్చితంగా ఎక్కడ అనిపిస్తోంది?', opts: ['ఛాతి మధ్యలో', 'ఎడమ వైపు ఛాతిలో', 'కుడి వైపు ఛాతిలో', 'అంతటా'] },
+  { q: 'నొప్పి ఎలా అనిపిస్తోంది?', opts: ['బిగుతుగా / ఒత్తిడిగా', 'తీవ్రంగా / గుచ్చినట్లు', 'మంటగా', 'మందమైన నొప్పిగా'] },
+  { q: 'నొప్పి మీ చేయి, వీపు, భుజం లేదా దవడకు వ్యాపిస్తుందా?', opts: ['ఎడమ చేయి', 'కుడి చేయి', 'దవడ / భుజం', 'లేదు'] },
+  { q: 'మీకు శ్వాస తీసుకోవడంలో ఇబ్బంది ఉందా?', opts: ['అవును, ఎప్పుడూ', 'కొన్నిసార్లు', 'పని చేసినప్పుడు మాత్రమే', 'లేదు'] },
+  { q: 'మీకు తల తిరగడం, చెమటలు లేదా వాంతి భావన ఉందా?', opts: ['అవును, మూడూ ఉన్నాయి', 'కొన్ని ఉన్నాయి', 'తల తిరుగుతోంది', 'లేదు'] },
+  { q: 'మీకు ఇంతకుముందు గుండె సంబంధిత సమస్యలు ఉన్నాయా?', opts: ['అవును', 'ఖచ్చితంగా తెలియదు', 'లేదు'] },
+  { q: 'మీరు ప్రస్తుతం ఏమైనా మందులు తీసుకుంటున్నారా?', opts: ['అవును', 'లేదు'] },
+  { q: 'మీకు మధుమేహం లేదా అధిక రక్తపోటు ఉందా?', opts: ['రెండూ ఉన్నాయి', 'రక్తపోటు మాత్రమే', 'మధుమేహం మాత్రమే', 'ఏదీ లేదు'] },
+  { q: 'ఏమైనా మందులకు అలర్జీ ఉందా?', opts: ['అవును', 'లేదు', 'ఖచ్చితంగా తెలియదు'] },
+  { q: 'మీ కుటుంబంలో ఎవరికైనా గుండె జబ్బులు ఉన్నాయా?', opts: ['అవును, తండ్రికి', 'అవును, మరొకరికి', 'లేదు', 'ఖచ్చితంగా తెలియదు'] },
+]
+
+const getQuestions = (language: string) => language === 'తెలుగు' ? TELUGU_QUESTIONS : QUESTIONS
 
 const AYUSH = [
   { key: 'prakriti', label: 'Prakriti', icon: '🌿', q: 'Body constitution?', opts: ['Vata', 'Pitta', 'Kapha', 'Mixed'] },
@@ -68,8 +85,15 @@ export default function App() {
   const speakText = (text: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
     window.speechSynthesis.cancel()
+    const locale = voiceLocale(lang)
     const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = voiceLocale(lang)
+    utterance.lang = locale
+    // Prefer a real Telugu/Indian-language system voice when the browser provides one.
+    // This prevents Chrome from silently falling back to an English voice.
+    const voices = window.speechSynthesis.getVoices()
+    const preferred = voices.find(v => v.lang.toLowerCase() === locale.toLowerCase())
+      || voices.find(v => v.lang.toLowerCase().startsWith(locale.split('-')[0].toLowerCase()))
+    if (preferred) utterance.voice = preferred
     utterance.rate = 0.92
     utterance.pitch = 1
     utterance.onstart = () => setIsSpeaking(true)
@@ -96,7 +120,7 @@ export default function App() {
       if (event.results[event.results.length - 1].isFinal) {
         setIsListening(false)
         setAnswers(a => [...a, transcript])
-        if (qIdx < QUESTIONS.length - 1) setQIdx(q => q + 1)
+        if (qIdx < getQuestions(lang).length - 1) setQIdx(q => q + 1)
         else go('touch-history')
       }
     }
@@ -121,28 +145,29 @@ export default function App() {
 
   useEffect(() => {
     if (screen !== 'ai-history') return
-    const t = setTimeout(() => speakText(QUESTIONS[qIdx].q), 450)
+    const t = setTimeout(() => speakText(getQuestions(lang)[qIdx].q), 450)
     return () => clearTimeout(t)
   }, [screen, qIdx, lang])
 
   const answerQ = (ans: string) => {
     setAnswers(a => [...a, ans])
-    if (qIdx < QUESTIONS.length - 1) setQIdx(q => q + 1)
+    if (qIdx < getQuestions(lang).length - 1) setQIdx(q => q + 1)
     else go('touch-history')
   }
 
   // ── SHARED COMPONENTS ──────────────────────────────────────────────────────
 
   const PatientHeader = ({ step, total, dark = false, back }: { step?: number; total?: number; dark?: boolean; back?: Screen }) => (
-    <div className="flex items-center justify-between px-6 py-4 flex-shrink-0"
-      style={{ background: dark ? N : '#fff', borderBottom: dark ? 'none' : '1px solid #e8edf2' }}>
+    <div className="flex-shrink-0" style={{ background: dark ? N : '#fff', borderBottom: dark ? 'none' : '1px solid #d9e1e8' }}>
+      <div className="govt-tricolor" />
+      <div className="flex items-center justify-between px-6 py-4">
       <div className="flex items-center gap-3">
         {back && <button onClick={() => go(back)} style={{ color: dark ? '#94a3b8' : '#64748b', marginRight: 4 }}>←</button>}
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-white text-sm"
-          style={{ background: T, fontFamily: 'Outfit, sans-serif' }}>M</div>
+        <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-white text-sm border-2 border-white shadow"
+          style={{ background: N, fontFamily: 'Outfit, sans-serif' }}>MK</div>
         <div>
           <p className="font-bold text-sm leading-none" style={{ color: dark ? '#fff' : N, fontFamily: 'Outfit, sans-serif' }}>MediKiosk</p>
-          <p className="text-xs leading-none mt-0.5" style={{ color: dark ? '#5eead4' : T }}>YOUR STORY. BETTER CARE.</p>
+          <p className="text-[9px] font-bold tracking-wider leading-none mt-1" style={{ color: dark ? '#cbd5e1' : '#64748b' }}>DIGITAL PUBLIC HEALTH INTAKE</p>
         </div>
       </div>
       {step && total && (
@@ -153,6 +178,7 @@ export default function App() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 
@@ -168,21 +194,22 @@ export default function App() {
 
   // ── SCREEN 1: WELCOME ──────────────────────────────────────────────────────
   if (screen === 'welcome') return (
-    <div className="h-full overflow-auto" style={{ background: '#f7fbfb' }}>
+    <div className="h-full overflow-auto" style={{ background: '#f4f7f9' }}>
       <div className="min-h-full relative overflow-hidden">
         <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full blur-3xl opacity-30" style={{ background: '#2dd4bf' }} />
         <div className="absolute bottom-0 -left-28 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ background: '#60a5fa' }} />
 
-        <header className="relative z-10 flex items-center justify-between px-7 py-5 max-w-6xl mx-auto">
+        <div className="govt-tricolor relative z-20" />
+        <header className="relative z-10 flex items-center justify-between px-7 py-5 max-w-6xl mx-auto bg-white/90 border-b border-slate-200">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-black shadow-lg" style={{ background: `linear-gradient(135deg, ${T}, #0f766e)` }}>M</div>
+            <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-black shadow-lg border-2 border-white" style={{ background: N }}>MK</div>
             <div>
               <div className="text-xl font-black tracking-tight" style={{ color: N, fontFamily: 'Outfit, sans-serif' }}>MediKiosk</div>
-              <div className="text-[9px] font-black tracking-[0.2em]" style={{ color: T }}>YOUR STORY. BETTER CARE.</div>
+              <div className="text-[9px] font-black tracking-[0.16em]" style={{ color: '#64748b' }}>DIGITAL PUBLIC HEALTH INTAKE</div>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500">
-            <span className="px-3 py-2 rounded-full bg-white border border-slate-200">🇮🇳 Indian-language friendly</span>
+            <span className="px-3 py-2 rounded-full bg-white border border-slate-200">🇮🇳 GOVERNMENT-READY DESIGN</span>
             <span className="px-3 py-2 rounded-full bg-white border border-slate-200">🔒 Secure session</span>
           </div>
         </header>
@@ -225,7 +252,7 @@ export default function App() {
           </section>
 
           <section className="relative flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-[470px] rounded-[2rem] p-5 shadow-2xl" style={{ background: `linear-gradient(145deg, ${N}, #12395f)`, boxShadow: '0 30px 80px rgba(11,31,58,.22)' }}>
+            <div className="relative w-full max-w-[470px] rounded-[2rem] p-5 shadow-2xl" style={{ background: `linear-gradient(145deg, ${N}, #1d4f73)`, boxShadow: '0 30px 80px rgba(11,31,58,.22)' }}>
               <div className="flex items-center justify-between px-1 pb-4">
                 <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#34d399' }} /><span className="text-xs font-bold text-slate-300">MediKiosk is ready</span></div>
                 <span className="text-[10px] px-2.5 py-1 rounded-full text-teal-200" style={{ background: 'rgba(45,212,191,.12)' }}>LIVE DEMO</span>
@@ -447,13 +474,13 @@ export default function App() {
       <div className="px-5 py-3 flex-shrink-0" style={{ background: '#fff', borderBottom: '1px solid #e8edf2' }}>
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-bold" style={{ color: N, fontFamily: 'Outfit, sans-serif' }}>
-            Question {qIdx + 1} of {QUESTIONS.length}
+            Question {qIdx + 1} of {getQuestions(lang).length}
           </span>
-          <button onClick={() => speakText(QUESTIONS[qIdx].q)} className="text-sm flex items-center gap-1 font-bold" style={{ color: T }}>🔊 Hear Question</button>
+          <button onClick={() => speakText(getQuestions(lang)[qIdx].q)} className="text-sm flex items-center gap-1 font-bold" style={{ color: T }}>🔊 Hear Question</button>
         </div>
         <div className="w-full h-2 rounded-full" style={{ background: '#e8edf2' }}>
           <div className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${((qIdx + 1) / QUESTIONS.length) * 100}%`, background: T }} />
+            style={{ width: `${((qIdx + 1) / getQuestions(lang).length) * 100}%`, background: T }} />
         </div>
       </div>
 
@@ -466,7 +493,7 @@ export default function App() {
                 style={{ background: T, fontFamily: 'Outfit, sans-serif' }}>AI</div>
               <div className="rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-xs"
                 style={{ background: '#fff', border: '1px solid #e8edf2' }}>
-                <p className="text-slate-600 text-sm">{QUESTIONS[i].q}</p>
+                <p className="text-slate-600 text-sm">{getQuestions(lang)[i].q}</p>
               </div>
             </div>
             <div className="flex justify-end">
@@ -484,7 +511,7 @@ export default function App() {
             style={{ background: T, fontFamily: 'Outfit, sans-serif' }}>AI</div>
           <div className="rounded-2xl rounded-tl-none px-4 py-3 shadow-sm"
             style={{ background: '#fff', border: `2px solid ${T}30` }}>
-            <p className="font-semibold text-sm" style={{ color: N }}>{QUESTIONS[qIdx].q}</p>
+            <p className="font-semibold text-sm" style={{ color: N }}>{getQuestions(lang)[qIdx].q}</p>
           </div>
         </div>
       </div>
@@ -503,7 +530,7 @@ export default function App() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          {QUESTIONS[qIdx].opts.map(opt => (
+          {getQuestions(lang)[qIdx].opts.map(opt => (
             <button key={opt} onClick={() => answerQ(opt)}
               className="py-3 px-3 rounded-xl text-sm font-semibold transition-all active:scale-95 text-left"
               style={{ background: '#f1f5f9', color: N, border: '1px solid #e2e8f0' }}>
